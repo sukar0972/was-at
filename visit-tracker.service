@@ -1,0 +1,19 @@
+[Unit]
+Description=Visit Tracker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=visit-tracker
+Group=visit-tracker
+WorkingDirectory=/opt/visit-tracker
+Environment=DATABASE_URL=postgres://visittracker:your_db_password@localhost/visittracker
+Environment=JWT_SECRET=change-this-to-a-random-32-char-string
+Environment=PORT=3000
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/visit-tracker/server/index.js
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

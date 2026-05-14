@@ -1,0 +1,58 @@
+services:
+  app:
+    build: .
+    container_name: visit-tracker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://vt_user:vt_pass@db:5432/visittracker
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vt-net
+
+  db:
+    image: postgres:16-alpine
+    container_name: visit-tracker-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=vt_user
+      - POSTGRES_PASSWORD=vt_pass
+      - POSTGRES_DB=visittracker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vt_user -d visittracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vt-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: visit-tracker-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - vt-net
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  vt-net:
+    driver: bridge
