@@ -1,6 +1,6 @@
 # Visit Tracker
 
-A lightweight, self-hostable web application for tracking visits to specific locations via iOS Shortcuts automations. Admin-managed accounts (Jellyfin-style), calendar heatmaps, streaks, and visit statistics.
+A lightweight, self-hostable web application for tracking visits to specific locations via iOS Shortcuts automations. Admin-managed accounts, calendar heatmaps, streaks, and visit statistics.
 
 ## Features
 
