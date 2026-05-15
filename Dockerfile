@@ -33,4 +33,9 @@ EXPOSE 3000
 
 WORKDIR /app/server
 
+# Create non-root user and restrict permissions
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
 CMD ["node", "index.js"]

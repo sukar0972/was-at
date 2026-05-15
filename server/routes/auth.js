@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
-import { signToken, requireAuth } from '../auth.js';
+import { signToken, requireAuth, DUMMY_HASH } from '../auth.js';
 
 const router = Router();
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -22,6 +22,8 @@ router.post('/login', async (req, res) => {
     );
 
     if (rows.length === 0) {
+      // Perform dummy bcrypt comparison to mitigate username enumeration via timing analysis
+      await bcrypt.compare(password, DUMMY_HASH);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

@@ -5,6 +5,16 @@ import { requireAuth } from '../auth.js';
 
 const router = Router();
 
+function validatePassword(password) {
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters';
+  }
+  if (password.length > 128) {
+    return 'Password must not exceed 128 characters';
+  }
+  return null;
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { rows } = await query(
@@ -22,6 +32,10 @@ router.get('/', requireAuth, async (req, res) => {
 router.put('/', requireAuth, async (req, res) => {
   const { display_name, current_password, new_password } = req.body;
 
+  if (display_name !== undefined && (typeof display_name !== 'string' || display_name.length > 100)) {
+    return res.status(400).json({ error: 'Display name must be a string up to 100 characters' });
+  }
+
   try {
     const { rows: userRows } = await query(
       'SELECT password_hash FROM users WHERE id = $1',
@@ -32,6 +46,7 @@ router.put('/', requireAuth, async (req, res) => {
     const updates = [];
     const values = [];
     let idx = 1;
+    let passwordChanged = false;
 
     if (display_name !== undefined) {
       updates.push(`display_name = $${idx++}`);
@@ -42,6 +57,10 @@ router.put('/', requireAuth, async (req, res) => {
       if (!current_password) {
         return res.status(400).json({ error: 'Current password required to change password' });
       }
+      const pwdError = validatePassword(new_password);
+      if (pwdError) {
+        return res.status(400).json({ error: pwdError });
+      }
       const valid = await bcrypt.compare(current_password, userRows[0].password_hash);
       if (!valid) {
         return res.status(401).json({ error: 'Current password is incorrect' });
@@ -49,6 +68,7 @@ router.put('/', requireAuth, async (req, res) => {
       const hash = await bcrypt.hash(new_password, 12);
       updates.push(`password_hash = $${idx++}`);
       values.push(hash);
+      passwordChanged = true;
     }
 
     if (updates.length === 0) {
@@ -61,6 +81,11 @@ router.put('/', requireAuth, async (req, res) => {
        RETURNING id, username, display_name, is_admin, created_at`,
       values
     );
+
+    // If password was changed, revoke all API tokens as a security measure
+    if (passwordChanged) {
+      await query('DELETE FROM api_tokens WHERE user_id = $1', [req.userId]);
+    }
 
     res.json(rows[0]);
   } catch (err) {

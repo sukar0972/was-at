@@ -6,6 +6,16 @@ import { requireAuth, requireAdmin } from '../auth.js';
 
 const router = Router();
 
+function validatePassword(password) {
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters';
+  }
+  if (password.length > 128) {
+    return 'Password must not exceed 128 characters';
+  }
+  return null;
+}
+
 router.get('/', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { rows } = await query(
@@ -23,6 +33,11 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
   const { username, display_name, password, is_admin } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  const pwdError = validatePassword(password);
+  if (pwdError) {
+    return res.status(400).json({ error: pwdError });
   }
 
   try {
@@ -49,19 +64,36 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { display_name, password, is_admin, is_disabled } = req.body;
 
+  if (is_disabled !== undefined && id === req.userId && !!is_disabled) {
+    return res.status(400).json({ error: 'Cannot disable your own account' });
+  }
+  if (is_admin !== undefined && id === req.userId && !is_admin) {
+    return res.status(400).json({ error: 'Cannot remove your own admin status' });
+  }
+
+  let passwordChanged = false;
+
   try {
     const updates = [];
     const values = [];
     let idx = 1;
 
     if (display_name !== undefined) {
+      if (typeof display_name !== 'string' || display_name.length > 100) {
+        return res.status(400).json({ error: 'Display name must be a string up to 100 characters' });
+      }
       updates.push(`display_name = $${idx++}`);
       values.push(display_name);
     }
     if (password !== undefined && password !== '') {
+      const pwdError = validatePassword(password);
+      if (pwdError) {
+        return res.status(400).json({ error: pwdError });
+      }
       const hash = await bcrypt.hash(password, 12);
       updates.push(`password_hash = $${idx++}`);
       values.push(hash);
+      passwordChanged = true;
     }
     if (is_admin !== undefined) {
       updates.push(`is_admin = $${idx++}`);
@@ -85,6 +117,11 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If an admin resets a user's password, revoke all of that user's API tokens
+    if (passwordChanged) {
+      await query('DELETE FROM api_tokens WHERE user_id = $1', [id]);
     }
 
     res.json(rows[0]);

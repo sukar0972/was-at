@@ -4,6 +4,22 @@ import { requireAuth } from '../auth.js';
 
 const router = Router();
 
+function validateCoords(lat, lng, radius) {
+  const latVal = parseFloat(lat);
+  const lngVal = parseFloat(lng);
+  const radiusVal = parseInt(radius);
+  if (isNaN(latVal) || latVal < -90 || latVal > 90) {
+    return 'Invalid latitude (must be between -90 and 90)';
+  }
+  if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
+    return 'Invalid longitude (must be between -180 and 180)';
+  }
+  if (isNaN(radiusVal) || radiusVal < 1 || radiusVal > 100000) {
+    return 'Invalid radius (must be between 1 and 100000 meters)';
+  }
+  return null;
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { rows } = await query(
@@ -24,8 +40,13 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.post('/', requireAuth, async (req, res) => {
   const { name, address, lat, lng, radius } = req.body;
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
+  if (!name || typeof name !== 'string' || name.length > 100) {
+    return res.status(400).json({ error: 'Name is required and must be up to 100 characters' });
+  }
+
+  const coordError = validateCoords(lat, lng, radius);
+  if (coordError) {
+    return res.status(400).json({ error: coordError });
   }
 
   try {
@@ -33,7 +54,7 @@ router.post('/', requireAuth, async (req, res) => {
       `INSERT INTO locations (user_id, name, address, latitude, longitude, radius_meters)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [req.userId, name, address || '', parseFloat(lat) || 0, parseFloat(lng) || 0, parseInt(radius) || 100]
+      [req.userId, name, address || '', parseFloat(lat), parseFloat(lng), parseInt(radius)]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -45,6 +66,15 @@ router.post('/', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { name, address, lat, lng, radius } = req.body;
+
+  if (name !== undefined && (typeof name !== 'string' || name.length > 100)) {
+    return res.status(400).json({ error: 'Name must be a string up to 100 characters' });
+  }
+
+  const coordError = validateCoords(lat, lng, radius);
+  if (coordError) {
+    return res.status(400).json({ error: coordError });
+  }
 
   try {
     const { rows: existing } = await query('SELECT user_id FROM locations WHERE id = $1', [id]);
@@ -60,7 +90,7 @@ router.put('/:id', requireAuth, async (req, res) => {
        SET name = $1, address = $2, latitude = $3, longitude = $4, radius_meters = $5
        WHERE id = $6 AND user_id = $7
        RETURNING *`,
-      [name, address, parseFloat(lat) || 0, parseFloat(lng) || 0, parseInt(radius) || 100, id, req.userId]
+      [name, address, parseFloat(lat), parseFloat(lng), parseInt(radius), id, req.userId]
     );
     res.json(rows[0]);
   } catch (err) {

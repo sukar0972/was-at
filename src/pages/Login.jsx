@@ -110,10 +110,6 @@ export function Login() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-
-          <p className="mt-6 text-center text-xs text-muted-light dark:text-muted-dark">
-            Try <span className="font-mono text-fg-light dark:text-fg-dark">admin</span> / <span className="font-mono text-fg-light dark:text-fg-dark">password</span> or <span className="font-mono text-fg-light dark:text-fg-dark">alice</span> / <span className="font-mono text-fg-light dark:text-fg-dark">password</span>
-          </p>
         </div>
       </div>
     </div>

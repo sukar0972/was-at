@@ -3,6 +3,13 @@ import { query, pool } from './db.js';
 
 const command = process.argv[2];
 
+function validatePassword(password) {
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters';
+  }
+  return null;
+}
+
 async function createAdmin() {
   const username = process.argv[3];
   const password = process.argv[4];
@@ -10,6 +17,12 @@ async function createAdmin() {
 
   if (!username || !password) {
     console.error('Usage: node cli.js create-admin <username> <password> [display_name]');
+    process.exit(1);
+  }
+
+  const pwdError = validatePassword(password);
+  if (pwdError) {
+    console.error(pwdError);
     process.exit(1);
   }
 
