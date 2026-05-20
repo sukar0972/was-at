@@ -200,7 +200,7 @@ Requires: Node.js 22+, PostgreSQL, Caddy or nginx
 
 4. Disable "Ask Before Running" if you want it to run automatically.
 
-> **Critical:** iOS Shortcuts requires a valid HTTPS certificate. Self-signed certificates will not work. Use Let's Encrypt via Caddy or certbot.
+> **Critical:** iOS Shortcuts requires a valid HTTPS certificate (unless locally served). Self-signed certificates will not work. Use Let's Encrypt via Caddy or certbot.
 
 ## API Endpoints
 
