@@ -7,6 +7,65 @@ const router = Router();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 30;
 
+router.get('/setup-status', async (_req, res) => {
+  try {
+    const { rows } = await query('SELECT COUNT(*)::int AS count FROM users');
+    res.json({ needsSetup: rows[0].count === 0 });
+  } catch (err) {
+    console.error('Setup status error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/setup', async (req, res) => {
+  const { username, password, display_name } = req.body;
+  if (!username || typeof username !== 'string' || username.trim().length < 2 || username.length > 50) {
+    return res.status(400).json({ error: 'Username must be between 2 and 50 characters' });
+  }
+  if (!password || typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    return res.status(400).json({ error: 'Password must be between 8 and 128 characters' });
+  }
+
+  const cleanUsername = username.trim();
+  const cleanDisplayName = (display_name && typeof display_name === 'string' ? display_name.trim() : '') || cleanUsername;
+
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const { rows } = await query(
+      `INSERT INTO users (username, password_hash, display_name, is_admin)
+       SELECT $1, $2, $3, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM users)
+       RETURNING id, username, display_name, is_admin`,
+      [cleanUsername, hash, cleanDisplayName]
+    );
+
+    if (rows.length === 0) {
+      return res.status(403).json({ error: 'Setup has already been completed' });
+    }
+
+    const user = rows[0];
+    const token = signToken({
+      sub: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      is_admin: user.is_admin,
+    });
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name,
+        is_admin: user.is_admin,
+      },
+    });
+  } catch (err) {
+    console.error('Setup error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {

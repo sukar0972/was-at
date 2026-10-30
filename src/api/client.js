@@ -32,6 +32,17 @@ async function apiRequest(method, endpoint, body) {
 }
 
 // Auth
+export async function fetchSetupStatus() {
+  return apiRequest('GET', '/api/auth/setup-status');
+}
+
+export async function setupInitialAdmin({ username, password, display_name }) {
+  const result = await apiRequest('POST', '/api/auth/setup', { username, password, display_name });
+  localStorage.setItem('vt_token', result.token);
+  localStorage.setItem('vt_user', JSON.stringify(result.user));
+  return result;
+}
+
 export async function login(username, password) {
   const result = await apiRequest('POST', '/api/auth/login', { username, password });
   localStorage.setItem('vt_token', result.token);

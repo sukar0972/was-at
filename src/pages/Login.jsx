@@ -6,11 +6,12 @@ import { MapPin, Eye, EyeOff, Moon, Sun, Loader2 } from 'lucide-react';
 
 export function Login() {
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, setupAdmin, needsSetup } = useAuth();
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
 
@@ -19,14 +20,23 @@ export function Login() {
     setError('');
     setIsLoading(true);
     try {
-      const result = await login(username, password);
-      if (result.user.is_admin) {
-        navigate('/admin');
-      } else {
+      if (needsSetup) {
+        await setupAdmin({
+          username,
+          password,
+          display_name: displayName || username,
+        });
         navigate('/dashboard');
+      } else {
+        const result = await login(username, password);
+        if (result.user.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
-      setError(err.message || 'Invalid credentials');
+      setError(err.message || (needsSetup ? 'Failed to complete setup' : 'Invalid credentials'));
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +62,9 @@ export function Login() {
               <MapPin size={24} className="text-primary" />
             </div>
             <h1 className="text-2xl font-semibold">Visit Tracker</h1>
-            <p className="text-sm text-muted-light dark:text-muted-dark mt-1">Sign in to your account</p>
+            <p className="text-sm text-muted-light dark:text-muted-dark mt-1">
+              {needsSetup ? 'Welcome! Create your admin account to get started' : 'Sign in to your account'}
+            </p>
           </div>
 
           {/* Error banner */}
@@ -72,11 +84,28 @@ export function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-fg-light dark:text-fg-dark focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
-                placeholder="Enter username"
+                placeholder={needsSetup ? 'Choose a username' : 'Enter username'}
                 required
                 autoComplete="username"
               />
             </div>
+
+            {needsSetup && (
+              <div>
+                <label htmlFor="displayName" className="block text-sm font-medium mb-1.5">
+                  Display Name <span className="text-muted-light dark:text-muted-dark font-normal">(optional)</span>
+                </label>
+                <input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-fg-light dark:text-fg-dark focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
+                  placeholder="How your name appears"
+                  autoComplete="name"
+                />
+              </div>
+            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium mb-1.5">Password</label>
@@ -87,9 +116,10 @@ export function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2.5 pr-10 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-fg-light dark:text-fg-dark focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
-                  placeholder="Enter password"
+                  placeholder={needsSetup ? 'At least 8 characters' : 'Enter password'}
+                  minLength={needsSetup ? 8 : undefined}
                   required
-                  autoComplete="current-password"
+                  autoComplete={needsSetup ? 'new-password' : 'current-password'}
                 />
                 <button
                   type="button"
@@ -107,7 +137,13 @@ export function Login() {
               className="w-full py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary-dark disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
             >
               {isLoading && <Loader2 size={16} className="animate-spin" />}
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading
+                ? needsSetup
+                  ? 'Creating admin account...'
+                  : 'Signing in...'
+                : needsSetup
+                  ? 'Create admin account'
+                  : 'Sign in'}
             </button>
           </form>
         </div>
