@@ -5,7 +5,12 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL || 'postgres://localhost/visittracker';
+const connectionString =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.STORAGE_URL ||
+  'postgres://localhost/visittracker';
+
 const useSsl =
   process.env.DATABASE_SSL === 'true' ||
   connectionString.includes('sslmode=require') ||
@@ -18,7 +23,8 @@ const pool =
     ssl: useSsl ? { rejectUnauthorized: false } : false,
     max: process.env.VERCEL ? 1 : 10,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 5000,
+    // 15s timeout so scale-to-zero serverless Postgres (Neon/Supabase) can wake from cold sleep
+    connectionTimeoutMillis: 15000,
   });
 
 if (!globalThis.__vtPool) {

@@ -20,8 +20,10 @@ const PORT = process.env.PORT || 3000;
 app.disable('x-powered-by');
 app.use(express.json({ limit: '10kb' }));
 
+const apiRouter = express.Router();
+
 // Security and no-cache headers for API routes
-app.use('/api', (_req, res, next) => {
+apiRouter.use((_req, res, next) => {
   res.set({
     'Cache-Control': 'no-store, max-age=0',
     'X-Content-Type-Options': 'nosniff',
@@ -31,18 +33,23 @@ app.use('/api', (_req, res, next) => {
 });
 
 // API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/admin/users', adminRoutes);
-app.use('/api/locations', locationRoutes);
-app.use('/api/visits/stats', statsRoutes);
-app.use('/api/visits', visitRoutes);
-app.use('/api/tokens', tokenRoutes);
-app.use('/api/profile', profileRoutes);
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/admin/users', adminRoutes);
+apiRouter.use('/locations', locationRoutes);
+apiRouter.use('/visits/stats', statsRoutes);
+apiRouter.use('/visits', visitRoutes);
+apiRouter.use('/tokens', tokenRoutes);
+apiRouter.use('/profile', profileRoutes);
 
 // Health check
-app.get('/api/health', (_req, res) => {
+apiRouter.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/api', apiRouter);
+if (process.env.VERCEL) {
+  app.use('/', apiRouter);
+}
 
 // Serve static frontend and bind port only outside Vercel
 if (!process.env.VERCEL) {

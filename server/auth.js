@@ -1,11 +1,22 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const dbSecretSeed =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.STORAGE_URL;
+
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  (dbSecretSeed
+    ? crypto.createHash('sha256').update(`vt-jwt:${dbSecretSeed}`).digest('hex')
+    : null);
+
 if (!JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET environment variable is required');
+  console.error('FATAL: JWT_SECRET (or DATABASE_URL/POSTGRES_URL) environment variable is required');
   if (!process.env.VERCEL) process.exit(1);
 }
 
