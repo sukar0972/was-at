@@ -53,6 +53,7 @@ export async function login(username, password) {
 export function logout() {
   localStorage.removeItem('vt_token');
   localStorage.removeItem('vt_user');
+  localStorage.removeItem('vt_shortcut_token');
 }
 
 export function getCurrentUser() {
@@ -122,7 +123,18 @@ export async function fetchTokens() {
 }
 
 export async function createToken(name) {
-  return apiRequest('POST', '/api/tokens', { name });
+  const result = await apiRequest('POST', '/api/tokens', { name });
+  if (result?.token) {
+    localStorage.setItem('vt_shortcut_token', result.token);
+  }
+  return result;
+}
+
+export async function ensureShortcutToken() {
+  const existing = localStorage.getItem('vt_shortcut_token');
+  if (existing) return existing;
+  const created = await createToken('iOS Shortcut');
+  return created.token;
 }
 
 export async function deleteToken(id) {

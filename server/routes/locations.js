@@ -5,9 +5,9 @@ import { requireAuth } from '../auth.js';
 const router = Router();
 
 function validateCoords(lat, lng, radius) {
-  const latVal = parseFloat(lat);
-  const lngVal = parseFloat(lng);
-  const radiusVal = parseInt(radius);
+  const latVal = lat !== undefined && lat !== '' ? parseFloat(lat) : 0;
+  const lngVal = lng !== undefined && lng !== '' ? parseFloat(lng) : 0;
+  const radiusVal = radius !== undefined && radius !== '' ? parseInt(radius) : 100;
   if (isNaN(latVal) || latVal < -90 || latVal > 90) {
     return 'Invalid latitude (must be between -90 and 90)';
   }
@@ -50,11 +50,14 @@ router.post('/', requireAuth, async (req, res) => {
   }
 
   try {
+    const latVal = lat !== undefined && lat !== '' ? parseFloat(lat) : 0;
+    const lngVal = lng !== undefined && lng !== '' ? parseFloat(lng) : 0;
+    const radiusVal = radius !== undefined && radius !== '' ? parseInt(radius) : 100;
     const { rows } = await query(
       `INSERT INTO locations (user_id, name, address, latitude, longitude, radius_meters)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [req.userId, name, address || '', parseFloat(lat), parseFloat(lng), parseInt(radius)]
+      [req.userId, name.trim(), (address || '').trim(), latVal, lngVal, radiusVal]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -85,12 +88,16 @@ router.put('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const latVal = lat !== undefined && lat !== '' ? parseFloat(lat) : 0;
+    const lngVal = lng !== undefined && lng !== '' ? parseFloat(lng) : 0;
+    const radiusVal = radius !== undefined && radius !== '' ? parseInt(radius) : 100;
+
     const { rows } = await query(
       `UPDATE locations
        SET name = $1, address = $2, latitude = $3, longitude = $4, radius_meters = $5
        WHERE id = $6 AND user_id = $7
        RETURNING *`,
-      [name, address, parseFloat(lat), parseFloat(lng), parseInt(radius), id, req.userId]
+      [name.trim(), (address || '').trim(), latVal, lngVal, radiusVal, id, req.userId]
     );
     res.json(rows[0]);
   } catch (err) {

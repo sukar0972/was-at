@@ -23,7 +23,10 @@ export function ApiTokens() {
 
   const deleteMut = useMutation({
     mutationFn: deleteToken,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tokens'] }),
+    onSuccess: () => {
+      localStorage.removeItem('vt_shortcut_token');
+      queryClient.invalidateQueries({ queryKey: ['tokens'] });
+    },
   });
 
   const copyToken = (token) => {
@@ -32,8 +35,15 @@ export function ApiTokens() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const copyShortcutUrl = (token) => {
+    const url = `${window.location.origin}/api/visits/hit?token=${token}&name=Gym`;
+    navigator.clipboard.writeText(url);
+    setCopiedId('url');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const copyCurl = (token) => {
-    const cmd = `curl -X POST https://your-domain.com/api/visits \\\n  -H "Authorization: Bearer ${token}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"location_id": "YOUR_LOCATION_ID", "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}'`;
+    const cmd = `curl "${window.location.origin}/api/visits/hit?token=${token}&name=Gym"`;
     navigator.clipboard.writeText(cmd);
     setCopiedId('curl');
     setTimeout(() => setCopiedId(null), 2000);
@@ -79,12 +89,20 @@ export function ApiTokens() {
               {copiedId === 'new' ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
             </button>
           </div>
-          <button
-            onClick={() => copyCurl(newToken.token)}
-            className="mt-2 text-xs text-primary hover:underline"
-          >
-            {copiedId === 'curl' ? 'Copied cURL!' : 'Copy example cURL command'}
-          </button>
+          <div className="mt-2 flex items-center gap-4">
+            <button
+              onClick={() => copyShortcutUrl(newToken.token)}
+              className="text-xs text-primary font-medium hover:underline"
+            >
+              {copiedId === 'url' ? 'Copied iOS Shortcut URL!' : 'Copy 1-step iOS Shortcut URL'}
+            </button>
+            <button
+              onClick={() => copyCurl(newToken.token)}
+              className="text-xs text-muted-light dark:text-muted-dark hover:underline"
+            >
+              {copiedId === 'curl' ? 'Copied cURL!' : 'Copy cURL'}
+            </button>
+          </div>
         </div>
       )}
 
