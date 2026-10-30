@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
-import { query } from './db.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   console.error('FATAL: JWT_SECRET environment variable is required');
-  process.exit(1);
+  if (!process.env.VERCEL) process.exit(1);
 }
 
 // Dummy bcrypt hash for timing-attack mitigation on username enumeration
@@ -22,31 +24,21 @@ export function verifyToken(token) {
   }
 }
 
-export async function requireAuth(req, res, next) {
-  try {
-    const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = header.slice(7);
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-
-    // Verify user still exists and is not disabled
-    const { rows } = await query('SELECT is_disabled FROM users WHERE id = $1', [decoded.sub]);
-    if (rows.length === 0 || rows[0].is_disabled) {
-      return res.status(401).json({ error: 'Account disabled or deleted' });
-    }
-
-    req.userId = decoded.sub;
-    req.user = decoded;
-    next();
-  } catch (err) {
-    next(err);
+export function requireAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  const token = header.slice(7);
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  req.userId = decoded.sub;
+  req.user = decoded;
+  next();
 }
 
 export function requireAdmin(req, res, next) {

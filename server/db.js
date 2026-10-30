@@ -1,15 +1,29 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '../.env' });
 dotenv.config();
 
 const { Pool } = pg;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://localhost/visittracker',
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-});
+const connectionString = process.env.DATABASE_URL || 'postgres://localhost/visittracker';
+const useSsl =
+  process.env.DATABASE_SSL === 'true' ||
+  connectionString.includes('sslmode=require') ||
+  Boolean(process.env.VERCEL);
+
+const pool =
+  globalThis.__vtPool ||
+  new Pool({
+    connectionString,
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
+    max: process.env.VERCEL ? 1 : 10,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  });
+
+if (!globalThis.__vtPool) {
+  globalThis.__vtPool = pool;
+}
 
 export async function query(text, params) {
   const start = Date.now();

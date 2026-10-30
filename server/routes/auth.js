@@ -85,8 +85,8 @@ router.get('/me', requireAuth, async (req, res) => {
       'SELECT id, username, display_name, is_admin, is_disabled, created_at FROM users WHERE id = $1',
       [req.userId]
     );
-    if (rows.length === 0) {
-      return res.status(401).json({ error: 'User not found' });
+    if (rows.length === 0 || rows[0].is_disabled) {
+      return res.status(401).json({ error: 'Account disabled or deleted' });
     }
     res.json(rows[0]);
   } catch (err) {

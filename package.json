@@ -8,17 +8,19 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server:dev": "cd server && node --watch index.js",
-    "server:start": "cd server && node index.js",
-    "server:migrate": "cd server && node migrate.js",
-    "server:admin": "cd server && node cli.js create-admin",
-    "docker:build": "docker build -t visit-tracker .",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "server:dev": "node --watch server/index.js",
+    "server:start": "node server/index.js",
+    "server:migrate": "node server/migrate.js",
+    "server:admin": "node server/cli.js create-admin"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^1.16.0",
+    "pg": "^8.14.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1"
